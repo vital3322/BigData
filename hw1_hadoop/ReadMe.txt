@@ -1,3 +1,5 @@
+find 95% interval
+
 copy all files to docker root and run 'bash run.sh'
 
 
