@@ -1,36 +1,40 @@
-find 95% interval
-
-copy all files to docker root and run 'bash run.sh'
-
-
-run:
+Упростили 1-ю задачу:
+Берем данные из файла и для каждого значение antiNucleus высчитываете СРЕДНЕЕ prodTime
+Далее берете только те строки, у которых prodTime выше СРЕДНЕГО для соответствующего ему antiNucleus
+В итоге для каждого antiNucleus для отобранных значений высчитать количество уникальных eventFile и среднее значение Pt
 
 
-1) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample/ -output sample_output/count -mapper map_count.py  -reducer reduce_count.py -file /map_count.py -file /reduce_count.py
+create docker and copy files:
+0) docker pull sequenceiq/hadoop-docker:2.7.1
+1) docker run -it sequenceiq/hadoop-docker:2.7.1 /etc/bootstrap.sh -bash
+2) docker cp sample.csv MY_NAME:/sample.csv
+3) docker cp map0.py MY_NAME:/map0.py
+4) docker cp reduce0.py MY_NAME:/reduce0.py
 
+create files in docker:
+0) cd $HADOOP_PREFIX
+1) bin/hdfs dfs -mkdir sample
+2) bin/hdfs dfs -put файл папка_в_хдфс
 
-2) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/count/ -output sample_output/mean -mapper map_mean.py  -reducer reduce_mean.py -file /map_mean.py -file /reduce_mean.py
+run map-reduce tasks on docker:
 
+0) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample/ -output sample_output/selectdata -mapper map0.py  -reducer reduce0.py -file /map0.py -file /reduce0.py
+1) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/selectdata -output sample_output/mean -mapper map1.py  -reducer reduce1.py -file /map1.py -file /reduce1.py
+2) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/selectdata -input sample_output/mean -output sample_output/prepare_prodtime -mapper map2.py  -reducer reduce2.py -file /map2.py -file /reduce2.py
+3) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/prepare_prodtime -output sample_output/prodtime -mapper map3.py  -reducer reduce3.py -file /map3.py -file /reduce3.py
+4) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/prodtime -output sample_output/eventfile -mapper map4.py  -reducer reduce4.py -file /map4.py -file /reduce4.py
+5) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/prodtime -output sample_output/pt -mapper map5.py  -reducer reduce5.py -file /map5.py -file /reduce5.py
 
-3) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/count -input sample_output/mean -output sample_output/prepare_std -mapper map_prepare_std.py  -reducer reduce_prepare_std.py -file /map_prepare_std.py -file /reduce_prepare_std.py
-
-
-4) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/prepare_std -output sample_output/std -mapper map_std.py  -reducer reduce_std.py -file /map_std.py -file /reduce_std.py
-
-
-5) bin/hadoop jar share/hadoop/tools/lib/hadoop-streaming-2.7.1.jar -input sample_output/std -input sample_output/mean -input sample_output/count -output sample_output/interval -mapper map_interval.py  -reducer reduce_interval.py -file /map_interval.py -file /reduce_interval.py
-
-
-6) bin/hadoop dfs -text sample_output/interval/*
-
-
+show results:
+7) bin/hdfs dfs -text sample_output/eventfile/*
+6) bin/hdfs dfs -text sample_output/pt/*
 =======================
 
 clear:
 
 
-1) bin/hadoop dfs -rmr sample_output/count
+1) bin/hadoop dfs -rmr sample_output/selectdata
 2) bin/hadoop dfs -rmr sample_output/mean
-3) bin/hadoop dfs -rmr sample_output/prepare_std
-4) bin/hadoop dfs -rmr sample_output/std
-5) bin/hadoop dfs -rmr sample_output/interval
+3) bin/hadoop dfs -rmr sample_output/prodtime
+4) bin/hadoop dfs -rmr sample_output/eventfile
+5) bin/hadoop dfs -rmr sample_output/pt
